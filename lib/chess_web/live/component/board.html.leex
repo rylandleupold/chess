@@ -1,5 +1,5 @@
 <div>
-  <div class="grid grid-cols-8 gap-0 border-black border-4 rounded" id="chess-board">
+  <div class="grid grid-cols-8 gap-0 border-black border-4 rounded bg-green-100" id="chess-board">
 		<%= for r <- 8..1 do %>
 			<%= for c <- 1..8 do %>
 				<div class="square <%= if rem(r, 2) == rem(c, 2), do: 'bg-brown-300', else: 'bg-brown-600' %>"
@@ -8,12 +8,27 @@
 						 phx-target="<%= @myself %>"
 						 phx-value-row="<%= r %>"
 						 phx-value-col="<%= c %>">
-					<%= if Map.get(@pieces, {r, c}) do %>
-						<%= live_component(@socket, Piece, Map.get(@pieces, {r, c})) %>
+
+					<%= if {r, c} in @valid_moves do %>
+						<%= if is_nil(@pieces[{r, c}]) do %>
+							<div class="select-circle rounded-full bg-black opacity-50"></div>
+						<% else %>
+							<div class="select-circle-piece rounded-full border-8 border-black opacity-50"></div>
+						<% end %>
+					<% end %>
+										<%= if Map.get(@pieces, {r, c}) do %>
+						<%=
+							piece_info = Map.get(@pieces, {r, c})
+							piece_info =
+								piece_info
+								|> Map.put(:row, r)
+								|> Map.put(:col, c)
+								|> Map.put(:selected, @selected == {r, c})
+							live_component(Piece, piece_info, id: "#{piece_info[:type]-piece_info[color]-row-col}")
+						%>
 					<% end %>
 				</div>
 			<% end %>
 		<% end %>
 	</div>
-	<button phx-click="square_clicked" phx-target="<%= @myself %>" phx-value-row="r" phx-value-col="c">Button</button>
 </div>

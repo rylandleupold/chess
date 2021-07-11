@@ -1,3 +1,5 @@
-<div class="flex flex-row" phx-click="board-clicked">
-    <%= live_component(@socket, Board, id: "chess-board") %>
+<div class="flex flex-row place-content-center">
+	<div class="board-container">
+		<%= live_component(@socket, Board, id: "chess-board") %>
+	</div>
 </div>
