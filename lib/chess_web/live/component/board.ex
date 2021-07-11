@@ -19,6 +19,8 @@ defmodule ChessWeb.Component.Board do
       |> assign(en_passant_vulnerable: nil)
       |> assign(next_to_move: :white)
       |> assign(kings: %{white: {1, 5}, black: {8, 5}})
+      |> assign(in_check: false)
+      |> assign(valid_moves_for_check: %{})
 
     {:ok, socket}
   end
@@ -27,7 +29,7 @@ defmodule ChessWeb.Component.Board do
   def handle_event("square-clicked", %{"row" => row, "col" => col}, socket) do
     row = String.to_integer(row)
     col = String.to_integer(col)
-    IO.inspect("#{row}-#{col}")
+    # IO.inspect("#{row}-#{col}")
 
     if !is_nil(socket.assigns.selected) and {row, col} in socket.assigns.valid_moves do
       # A valid move was chosen for the selected piece
@@ -62,7 +64,30 @@ defmodule ChessWeb.Component.Board do
           socket.assigns.kings
         )
 
-      IO.inspect(kings)
+      next_to_move = toggle_next_to_move(socket.assigns.next_to_move)
+
+      in_check =
+        BoardService.in_check?(
+          pieces,
+          kings[next_to_move]
+        )
+
+      {valid_moves_for_check, checkmate} =
+        if in_check do
+          case BoardService.valid_moves_for_check(
+                 pieces,
+                 kings[next_to_move],
+                 en_passant_vulnerable
+               ) do
+            %{} ->
+              {%{}, true}
+
+            result ->
+              {result, false}
+          end
+        else
+          {%{}, false}
+        end
 
       socket =
         socket
@@ -72,7 +97,10 @@ defmodule ChessWeb.Component.Board do
         |> assign(en_passant_vulnerable: en_passant_vulnerable)
         |> assign(has_moved: has_moved)
         |> assign(kings: kings)
-        |> assign(next_to_move: toggle_next_to_move(socket.assigns.next_to_move))
+        |> assign(next_to_move: next_to_move)
+        |> assign(in_check: in_check)
+        |> assign(valid_moves_for_check: valid_moves_for_check)
+        |> assign(checkmate: checkmate)
 
       {:noreply, socket}
     else
@@ -87,6 +115,23 @@ defmodule ChessWeb.Component.Board do
             socket.assigns.en_passant_vulnerable,
             socket.assigns.has_moved
           )
+
+        valid_moves =
+          if socket.assigns.in_check do
+            filter_valid_moves_for_check(
+              valid_moves,
+              {row, col},
+              socket.assigns.valid_moves_for_check
+            )
+          else
+            BoardService.reject_self_checking_moves(
+              socket.assigns.pieces,
+              valid_moves,
+              {row, col},
+              socket.assigns.kings[socket.assigns.next_to_move],
+              socket.assigns.en_passant_vulnerable
+            )
+          end
 
         socket =
           socket
@@ -114,9 +159,14 @@ defmodule ChessWeb.Component.Board do
     end
   end
 
-  defp print_pieces(pieces) do
-    Enum.each(pieces, fn {row, col} ->
-      IO.inspect({row, col, pieces[{row, col}]})
+  defp filter_valid_moves_for_check(valid_moves, piece, valid_moves_for_check) do
+    Enum.reduce(valid_moves, [], fn move, acc ->
+      if !is_nil(valid_moves_for_check[piece]) and
+           Enum.member?(valid_moves_for_check[piece], move) do
+        [move | acc]
+      else
+        acc
+      end
     end)
   end
 end

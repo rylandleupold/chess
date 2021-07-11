@@ -2,4 +2,7 @@
 	<div class="board-container">
 		<%= live_component(@socket, Board, id: "chess-board") %>
 	</div>
+	<%= if @live_action == :checkmate do %>
+		<p> CHECKMATE! <p>
+	<% end %>
 </div>

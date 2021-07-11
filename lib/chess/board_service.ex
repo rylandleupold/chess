@@ -21,6 +21,19 @@ defmodule Chess.BoardService do
     {1, 1}
   ]
 
+  @rook_lines [{0, -1}, {0, 1}, {1, 0}, {-1, 0}]
+
+  @bishop_lines [{-1, -1}, {-1, 1}, {1, -1}, {1, 1}]
+
+  @default_has_moved %{
+    {1, 1} => false,
+    {1, 8} => false,
+    {8, 1} => false,
+    {8, 8} => false,
+    {1, 5} => false,
+    {8, 5} => false
+  }
+
   def get_initial_board_state() do
     pieces = %{
       {1, 1} => %{type: :rook, color: :white},
@@ -48,16 +61,7 @@ defmodule Chess.BoardService do
         |> Map.put({7, c}, %{type: :pawn, color: :black})
       end)
 
-    has_moved = %{
-      {1, 1} => false,
-      {1, 8} => false,
-      {8, 1} => false,
-      {8, 8} => false,
-      {1, 5} => false,
-      {8, 5} => false
-    }
-
-    {pieces, has_moved}
+    {pieces, @default_has_moved}
   end
 
   def move_pieces(pieces, {r_start, c_start}, {r_dest, c_dest}, en_passant_vulnerable) do
@@ -135,7 +139,12 @@ defmodule Chess.BoardService do
     end
   end
 
-  def valid_moves(pieces, coords, en_passant_vulnerable, has_moved) do
+  def valid_moves(
+        pieces,
+        coords,
+        en_passant_vulnerable \\ {-1, -1},
+        has_moved \\ @default_has_moved
+      ) do
     case Map.get(pieces, coords).type do
       :knight -> valid_knight_moves(pieces, coords)
       :bishop -> valid_bishop_moves(pieces, coords)
@@ -144,6 +153,13 @@ defmodule Chess.BoardService do
       :king -> valid_king_moves(pieces, coords, has_moved)
       :queen -> valid_queen_moves(pieces, coords)
     end
+  end
+
+  def reject_self_checking_moves(pieces, moves, piece, king, en_passant_vulnerble) do
+    Enum.reject(moves, fn move ->
+      potential_pieces = move_pieces(pieces, piece, move, en_passant_vulnerble)
+      in_check?(potential_pieces, king)
+    end)
   end
 
   defp valid_knight_moves(pieces, {r, c}) do
@@ -167,7 +183,7 @@ defmodule Chess.BoardService do
 
   defp valid_bishop_moves(pieces, {r, c}) do
     valid_moves =
-      for {r_dir, c_dir} <- [{-1, -1}, {-1, 1}, {1, -1}, {1, 1}], into: [] do
+      for {r_dir, c_dir} <- @bishop_lines, into: [] do
         Enum.reduce_while(1..8, [], fn i, acc ->
           r_dest = r + i * r_dir
           c_dest = c + i * c_dir
@@ -195,7 +211,7 @@ defmodule Chess.BoardService do
 
   defp valid_rook_moves(pieces, {r, c}) do
     valid_moves =
-      for {r_dir, c_dir} <- [{0, -1}, {0, 1}, {1, 0}, {-1, 0}], into: [] do
+      for {r_dir, c_dir} <- @rook_lines, into: [] do
         Enum.reduce_while(1..8, [], fn i, acc ->
           r_dest = r + i * r_dir
           c_dest = c + i * c_dir
@@ -221,7 +237,7 @@ defmodule Chess.BoardService do
     List.flatten(valid_moves)
   end
 
-  defp valid_king_moves(pieces, {r, c}, has_moved) do
+  defp valid_king_moves(pieces, {r, c}, has_moved, check \\ false) do
     valid_moves =
       Enum.reduce(@king_moves, [], fn {r_offset, c_offset}, acc ->
         r_dest = r + r_offset
@@ -241,24 +257,31 @@ defmodule Chess.BoardService do
 
     valid_moves =
       valid_moves ++
-        if !has_moved[king] and !has_moved[{rook_row, 1}] and
-             Enum.all?(2..(c - 1), fn col ->
-               is_nil(pieces[{rook_row, col}])
-             end) do
-          [{rook_row, 3}]
+        if !check do
+          castling_moves =
+            if !has_moved[king] and !has_moved[{rook_row, 1}] and
+                 Enum.all?(2..(c - 1), fn col ->
+                   is_nil(pieces[{rook_row, col}])
+                 end) do
+              [{rook_row, 3}]
+            else
+              []
+            end
+
+          castling_moves ++
+            if !has_moved[king] and !has_moved[{rook_row, 8}] and
+                 Enum.all?(7..(c + 1), fn col ->
+                   is_nil(pieces[{rook_row, col}])
+                 end) do
+              [{rook_row, 7}]
+            else
+              []
+            end
         else
           []
         end
 
-    valid_moves ++
-      if !has_moved[king] and !has_moved[{rook_row, 8}] and
-           Enum.all?(7..(c + 1), fn col ->
-             is_nil(pieces[{rook_row, col}])
-           end) do
-        [{rook_row, 7}]
-      else
-        []
-      end
+    valid_moves
   end
 
   defp valid_queen_moves(pieces, {r, c}) do
@@ -303,5 +326,102 @@ defmodule Chess.BoardService do
         end
 
     valid_moves
+  end
+
+  def in_check?(pieces, {r_king, c_king} = king) do
+    attacking_pawn_direction = if pieces[king].color == :white, do: 1, else: -1
+
+    in_check_by_knight =
+      Enum.any?(@knight_moves, fn {r_offset, c_offset} ->
+        r_dest = r_king + r_offset
+        c_dest = c_king + c_offset
+
+        !is_nil(pieces[{r_dest, c_dest}]) and pieces[{r_dest, c_dest}].color != pieces[king].color and
+          pieces[{r_dest, c_dest}].type == :knight
+      end)
+
+    in_check_by_pawn =
+      Enum.any?(
+        [
+          {r_king + attacking_pawn_direction, c_king - 1},
+          {r_king + attacking_pawn_direction, c_king + 1}
+        ],
+        fn pawn ->
+          !is_nil(pieces[pawn]) and pieces[pawn].color != pieces[king].color and
+            pieces[pawn].type == :pawn
+        end
+      )
+
+    in_check_by_other =
+      Enum.any?(@rook_lines ++ @bishop_lines, fn {r_dir, c_dir} ->
+        Enum.reduce_while(1..8, false, fn i, _acc ->
+          r_dest = r_king + i * r_dir
+          c_dest = c_king + i * c_dir
+
+          potential_attackers =
+            if {r_dir, c_dir} in @rook_lines, do: [:rook, :queen], else: [:bishop, :queen]
+
+          if r_dest in 1..8 and c_dest in 1..8 do
+            case Map.get(pieces, {r_dest, c_dest}) do
+              nil ->
+                {:cont, false}
+
+              piece ->
+                if piece.color != pieces[king].color and piece.type in potential_attackers do
+                  {:halt, true}
+                else
+                  {:halt, false}
+                end
+            end
+          else
+            {:halt, false}
+          end
+        end)
+      end)
+
+    # IO.inspect(
+    #   "in_check_by_knight: #{in_check_by_knight}, in_check_by_pawn: #{in_check_by_pawn}, in_check_by_other: #{in_check_by_other}"
+    # )
+
+    in_check_by_knight or
+      in_check_by_pawn or in_check_by_other
+  end
+
+  def valid_moves_for_check(pieces, {_r_king, _c_king} = king, en_passant_vulnerable) do
+    valid_king_moves =
+      Enum.filter(valid_king_moves(pieces, king, @default_has_moved, true), fn king_dest ->
+        potential_pieces = move_pieces(pieces, king, king_dest, en_passant_vulnerable)
+        !in_check?(potential_pieces, king_dest)
+      end)
+
+    valid_other_moves =
+      Enum.reduce(pieces, %{}, fn {piece, piece_info}, acc ->
+        if piece_info.color == pieces[king].color and piece_info.type != :king do
+          valid_piece_moves =
+            Enum.filter(valid_moves(pieces, piece, en_passant_vulnerable), fn piece_dest ->
+              potential_pieces = move_pieces(pieces, piece, piece_dest, en_passant_vulnerable)
+              !in_check?(potential_pieces, king)
+            end)
+
+          Map.put(acc, piece, valid_piece_moves)
+        else
+          acc
+        end
+      end)
+
+    valid_other_moves
+    |> Map.put(king, valid_king_moves)
+    |> remove_empty_entries()
+    |> IO.inspect()
+  end
+
+  defp remove_empty_entries(map) do
+    Enum.reduce(map, %{}, fn {key, lst}, acc ->
+      if Enum.empty?(lst) do
+        acc
+      else
+        Map.put(acc, key, lst)
+      end
+    end)
   end
 end
