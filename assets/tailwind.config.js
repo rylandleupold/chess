@@ -7,6 +7,17 @@ module.exports = {
   ],
   darkMode: false, // or 'media' or 'class'
   theme: {
+    borderWidth: {
+      DEFAULT: '1px',
+      '0': '0',
+      '2': '2px',
+      '3': '3px',
+      '4': '4px',
+      '5': '5px',
+      '6': '6px',
+      '8': '8px',
+    },
+
     extend: {
       colors: {
         brown: {
@@ -29,6 +40,7 @@ module.exports = {
           '200': '#B5C7AD',
           '300': '#99B38F',
           '400': '#7E9E70',
+          '450': '#729065',
           '500': '#658259',
           '600': '#4E6444',
           '700': '#364630',

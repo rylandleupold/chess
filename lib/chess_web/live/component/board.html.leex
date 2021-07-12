@@ -1,41 +1,60 @@
-<div>
-  <div class="relative grid grid-cols-8 gap-0 border-black border-4 rounded bg-gray-600" id="chess-board">
-		<%= for r <- 8..1 do %>
-			<%= for c <- 1..8 do %>
-				<div class="square <%= if rem(r, 2) == rem(c, 2), do: 'bg-brown-300', else: 'bg-brown-600' %> <%= if @queening, do: 'opacity-60'%>"
-						 id="square-<%= r %>-<%= c %>"
-						 phx-click="square-clicked"
-						 phx-target="<%= @myself %>"
-						 phx-value-row="<%= r %>"
-						 phx-value-col="<%= c %>">
+<div class="flex flex-col">
+	<%= live_component(CapturedPieces, id: "captured-white-pieces", color: :white) %>
 
-					<%= if {r, c} in @valid_moves do %>
-						<%= if is_nil(@pieces[{r, c}]) do %>
-							<div class="select-circle rounded-full bg-black opacity-50"></div>
-						<% else %>
-							<div class="select-circle-piece rounded-full border-8 border-black opacity-50"></div>
-						<% end %>
-					<% end %>
-						<%= if Map.get(@pieces, {r, c}) do %>
-							<%=
-								piece_info = Map.get(@pieces, {r, c})
-								piece_info =
-									piece_info
-									|> Map.put(:row, r)
-									|> Map.put(:col, c)
-									|> Map.put(:selected, @selected == {r, c})
-								live_component(Piece, piece_info, id: "#{piece_info[:type]-piece_info[color]-row-col}")
-							%>
-					<% end %>
-				</div>
+	<div class="flex flex-row">
+		<div class="row-label grid grid-rows-8 place-items-center bg-black border-black border-t-5 rounded-l-md">
+			<%= for i <- 8..1 do %>
+				<p class="text-2xl font-medium text-gray-400"><%= i %></p>
 			<% end %>
-		<% end %>
+		</div>
 
-		<%= if @queening do %>
-				<%= live_component(QueeningModal,
-													 id: "queening-modal",
-													 target: @myself,
-													 color: (if @next_to_move == :white, do: :black, else: :white)) %>
-		<% end %>
+		<div class="flex flex-col">
+			<div class="relative grid grid-cols-8 gap-0 border-black border-t-5 border-r-5 rounded-tr-md bg-gray-600" id="chess-board">
+				<%= for r <- 8..1 do %>
+					<%= for c <- 1..8 do %>
+						<div class="square
+											<%= if rem(r, 2) == rem(c, 2), do: 'bg-brown-300', else: 'bg-brown-600' %>
+											<%= if @queening, do: 'opacity-60'%>"
+								id="square-<%= r %>-<%= c %>"
+								phx-click="square-clicked"
+								phx-target="<%= @myself %>"
+								phx-value-row="<%= r %>"
+								phx-value-col="<%= c %>">
+
+							<%= if @selected == {r, c} do %>
+								<div class="square bg-green-400 border-4 border-green-450 rounded-sm"></div>
+							<% end %>
+
+							<%= if {r, c} in @valid_moves do %>
+								<%= if is_nil(@pieces[{r, c}]) do %>
+									<div class="select-circle rounded-full bg-brown-800 opacity-60"></div>
+								<% else %>
+									<div class="select-circle-piece rounded-full border-6 border-brown-800 opacity-60"></div>
+								<% end %>
+							<% end %>
+
+							<%= if Map.get(@pieces, {r, c}) do %>
+								<%= live_component(Piece, Map.get(@pieces, {r, c}), id: "piece-#{r}-#{c}") %>
+							<% end %>
+						</div>
+					<% end %>
+				<% end %>
+
+				<%= if @queening do %>
+						<%= live_component(QueeningModal,
+															id: "queening-modal",
+															target: @myself,
+															color: (if @next_to_move == :white, do: :black, else: :white)) %>
+				<% end %>
+			</div>
+
+			<div class="column-label grid grid-cols-8 place-items-center bg-black border-black border-r-5 rounded-br-md">
+				<%= for i <- String.graphemes("ABCDEFGH") do %>
+					<p class="text-2xl font-medium text-gray-400"><%= i %></p>
+				<% end %>
+			</div>
+		</div>
 	</div>
+
+	<%= live_component(CapturedPieces, id: "captured-black-pieces", color: :black) %>
 </div>

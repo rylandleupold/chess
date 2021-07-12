@@ -1,0 +1,7 @@
+<div class="captured-pieces-row flex flex-row py-4 pl-8">
+    <%= for type <- get_pieces(@captured_pieces) do %>
+        <div class="small-square self-center">
+            <%= live_component(Piece, type: type, color: @color) %>
+        </div>
+    <% end %>
+</div>

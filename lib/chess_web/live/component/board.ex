@@ -3,7 +3,7 @@ defmodule ChessWeb.Component.Board do
 
   alias Chess.BoardService
 
-  alias ChessWeb.Component.{Piece, QueeningModal}
+  alias ChessWeb.Component.{Piece, QueeningModal, CapturedPieces}
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
@@ -53,13 +53,25 @@ defmodule ChessWeb.Component.Board do
     if !socket.assigns.queening and !socket.assigns.checkmate do
       if !is_nil(socket.assigns.selected) and {row, col} in socket.assigns.valid_moves do
         # A valid move was chosen for the selected piece
-        pieces =
+        next_to_move = toggle_next_to_move(socket.assigns.next_to_move)
+
+        {pieces, captured_piece} =
           BoardService.move_pieces(
             socket.assigns.pieces,
             socket.assigns.selected,
             {row, col},
             socket.assigns.en_passant_vulnerable
           )
+
+        if !is_nil(captured_piece) do
+          case captured_piece.color do
+            :white ->
+              send_update(CapturedPieces, id: "captured-white-pieces", type: captured_piece.type)
+
+            :black ->
+              send_update(CapturedPieces, id: "captured-black-pieces", type: captured_piece.type)
+          end
+        end
 
         en_passant_vulnerable =
           BoardService.decide_en_passant_vulnerable(
@@ -83,8 +95,6 @@ defmodule ChessWeb.Component.Board do
             {row, col},
             socket.assigns.kings
           )
-
-        next_to_move = toggle_next_to_move(socket.assigns.next_to_move)
 
         in_check =
           BoardService.in_check?(

@@ -6,7 +6,7 @@
 			phx-target="<%= @target %>"
 			phx-value-type="<%= piece %>"
 			phx-value-color="<%= @color %>">
-			<%= live_component(Piece, id: "queening-#{piece}", type: String.to_atom(piece), color: @color, row: 1, col: 1, selected: false) %>
+			<%= live_component(Piece, id: "queening-#{piece}", type: String.to_atom(piece), color: @color) %>
 		</div>
 	<% end %>
 </div>

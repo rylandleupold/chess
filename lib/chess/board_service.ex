@@ -64,15 +64,25 @@ defmodule Chess.BoardService do
     {pieces, @default_has_moved}
   end
 
-  def move_pieces(pieces, {r_start, c_start}, {r_dest, c_dest}, en_passant_vulnerable) do
+  def move_pieces(
+        pieces,
+        {r_start, c_start},
+        {r_dest, c_dest},
+        en_passant_vulnerable
+      ) do
     if pieces[{r_start, c_start}].type == :pawn and is_nil(pieces[{r_dest, c_dest}]) and
          en_passant_vulnerable == {r_start, c_dest} do
       pawn_to_move = pieces[{r_start, c_start}]
 
-      pieces
-      |> Map.put({r_dest, c_dest}, pawn_to_move)
-      |> Map.delete({r_start, c_start})
-      |> Map.delete(en_passant_vulnerable)
+      captured_piece = pieces[en_passant_vulnerable]
+
+      pieces =
+        pieces
+        |> Map.put({r_dest, c_dest}, pawn_to_move)
+        |> Map.delete({r_start, c_start})
+        |> Map.delete(en_passant_vulnerable)
+
+      {pieces, captured_piece}
     else
       if pieces[{r_start, c_start}].type == :king and abs(c_dest - c_start) > 1 do
         king_to_move = pieces[{r_start, c_start}]
@@ -80,17 +90,25 @@ defmodule Chess.BoardService do
         {c_start_rook, c_dest_rook} = if c_dest - c_start == 2, do: {8, 6}, else: {1, 4}
         rook_to_move = pieces[{r_start, c_start_rook}]
 
-        pieces
-        |> Map.put({r_dest, c_dest}, king_to_move)
-        |> Map.put({r_start, c_dest_rook}, rook_to_move)
-        |> Map.delete({r_start, c_start})
-        |> Map.delete({r_start, c_start_rook})
+        pieces =
+          pieces
+          |> Map.put({r_dest, c_dest}, king_to_move)
+          |> Map.put({r_start, c_dest_rook}, rook_to_move)
+          |> Map.delete({r_start, c_start})
+          |> Map.delete({r_start, c_start_rook})
+
+        {pieces, nil}
       else
         piece_to_move = pieces[{r_start, c_start}]
 
-        pieces
-        |> Map.put({r_dest, c_dest}, piece_to_move)
-        |> Map.delete({r_start, c_start})
+        captured_piece = pieces[{r_dest, c_dest}]
+
+        pieces =
+          pieces
+          |> Map.put({r_dest, c_dest}, piece_to_move)
+          |> Map.delete({r_start, c_start})
+
+        {pieces, captured_piece}
       end
     end
   end
@@ -157,7 +175,7 @@ defmodule Chess.BoardService do
 
   def reject_self_checking_moves(pieces, moves, piece, king, en_passant_vulnerble) do
     Enum.reject(moves, fn move ->
-      potential_pieces = move_pieces(pieces, piece, move, en_passant_vulnerble)
+      {potential_pieces, _captured_piece} = move_pieces(pieces, piece, move, en_passant_vulnerble)
       potential_king = if pieces[piece].type == :king, do: move, else: king
       in_check?(potential_pieces, potential_king)
     end)
@@ -387,7 +405,9 @@ defmodule Chess.BoardService do
   def valid_moves_for_check(pieces, {_r_king, _c_king} = king, en_passant_vulnerable) do
     valid_king_moves =
       Enum.filter(valid_king_moves(pieces, king, @default_has_moved, true), fn king_dest ->
-        potential_pieces = move_pieces(pieces, king, king_dest, en_passant_vulnerable)
+        {potential_pieces, _captured_piece} =
+          move_pieces(pieces, king, king_dest, en_passant_vulnerable)
+
         !in_check?(potential_pieces, king_dest)
       end)
 
@@ -396,7 +416,9 @@ defmodule Chess.BoardService do
         if piece_info.color == pieces[king].color and piece_info.type != :king do
           valid_piece_moves =
             Enum.filter(valid_moves(pieces, piece, en_passant_vulnerable), fn piece_dest ->
-              potential_pieces = move_pieces(pieces, piece, piece_dest, en_passant_vulnerable)
+              {potential_pieces, _captured_piece} =
+                move_pieces(pieces, piece, piece_dest, en_passant_vulnerable)
+
               !in_check?(potential_pieces, king)
             end)
 
