@@ -158,7 +158,8 @@ defmodule Chess.BoardService do
   def reject_self_checking_moves(pieces, moves, piece, king, en_passant_vulnerble) do
     Enum.reject(moves, fn move ->
       potential_pieces = move_pieces(pieces, piece, move, en_passant_vulnerble)
-      in_check?(potential_pieces, king)
+      potential_king = if pieces[piece].type == :king, do: move, else: king
+      in_check?(potential_pieces, potential_king)
     end)
   end
 
@@ -379,10 +380,6 @@ defmodule Chess.BoardService do
         end)
       end)
 
-    # IO.inspect(
-    #   "in_check_by_knight: #{in_check_by_knight}, in_check_by_pawn: #{in_check_by_pawn}, in_check_by_other: #{in_check_by_other}"
-    # )
-
     in_check_by_knight or
       in_check_by_pawn or in_check_by_other
   end
@@ -412,7 +409,14 @@ defmodule Chess.BoardService do
     valid_other_moves
     |> Map.put(king, valid_king_moves)
     |> remove_empty_entries()
-    |> IO.inspect()
+  end
+
+  def handle_queening(pieces, piece, {r_dest, c_dest}) do
+    if pieces[piece].type == :pawn and r_dest in [1, 8] do
+      {true, {r_dest, c_dest}}
+    else
+      {false, nil}
+    end
   end
 
   defp remove_empty_entries(map) do

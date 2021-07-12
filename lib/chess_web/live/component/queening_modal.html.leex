@@ -1,0 +1,12 @@
+<div class="queening-modal grid grid-cols-2 border-4 border-black rounded-md <%= @background_color %>">
+	<%= for piece <- ["queen", "bishop", "rook", "knight"] do %>
+		<div class="square"
+			id="select-<%= piece %>-btn"
+			phx-click="selected-queening-piece"
+			phx-target="<%= @target %>"
+			phx-value-type="<%= piece %>"
+			phx-value-color="<%= @color %>">
+			<%= live_component(Piece, id: "queening-#{piece}", type: String.to_atom(piece), color: @color, row: 1, col: 1, selected: false) %>
+		</div>
+	<% end %>
+</div>

@@ -115,6 +115,14 @@ div .select-circle-piece {
   height: 90%;
 }
 
+div .queening-modal {
+  margin: 37%;
+  width: 26%;
+  height: 26%;
+  position: absolute;
+  justify-items: center;
+}
+
 .piece {
   height: 80%;
   position: absolute;
@@ -133,6 +141,7 @@ div .select-circle-piece {
   right: 0;
   margin: auto;
 }
+
 .board-container {
   margin-top: 5vh;
   justify-content: center;
