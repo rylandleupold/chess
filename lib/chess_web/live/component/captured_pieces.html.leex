@@ -1,7 +1,16 @@
-<div class="captured-pieces-row flex flex-row py-4 pl-8">
-    <%= for type <- get_pieces(@captured_pieces) do %>
-        <div class="small-square self-center">
-            <%= live_component(Piece, type: type, color: @color) %>
-        </div>
+<div class="captured-pieces-row flex flex-row py-4 px-6">
+    <%= for {type, n} <- get_pieces(@captured_pieces) do %>
+        <%= if n <= 1 do %>
+            <div class="small-square self-center">
+                <%= live_component(Piece, type: type, color: @color) %>
+            </div>
+        <% else %>
+            <div class="small-square self-center">
+                <div class="flex justify-center captured-number-circle rounded-full bg-black text-gray-400 text-base font-medium">
+                    <%= n %>
+                </div>
+                <%= live_component(Piece, type: type, color: @color) %>
+            </div>
+        <% end %>
     <% end %>
 </div>

@@ -11,8 +11,7 @@ defmodule ChessWeb.Component.CapturedPieces do
       bishop: 0,
       knight: 0,
       pawn: 0
-    },
-    justify_end: false
+    }
   }
 
   @impl Phoenix.LiveComponent
@@ -21,9 +20,18 @@ defmodule ChessWeb.Component.CapturedPieces do
   end
 
   @impl Phoenix.LiveComponent
+  def update(%{type: type, remove: true}, socket) do
+    captured_pieces =
+      Map.update(socket.assigns.captured_pieces, type, 0, fn n ->
+        n - 1
+      end)
+
+    {:ok, assign(socket, captured_pieces: captured_pieces)}
+  end
+
+  @impl Phoenix.LiveComponent
   def update(%{type: type}, socket) do
     captured_pieces = Map.update!(socket.assigns.captured_pieces, type, fn n -> n + 1 end)
-    IO.inspect(captured_pieces)
     {:ok, assign(socket, captured_pieces: captured_pieces)}
   end
 
@@ -41,9 +49,7 @@ defmodule ChessWeb.Component.CapturedPieces do
       if n == 0 do
         acc
       else
-        new_pieces = for _i <- 1..n, into: [], do: type
-
-        acc ++ new_pieces
+        acc ++ [{type, n}]
       end
     end)
   end

@@ -1,14 +1,22 @@
-<div class="flex flex-col">
-	<%= live_component(CapturedPieces, id: "captured-white-pieces", color: :white) %>
-
+<div class="flex flex-col"
+	 phx-window-keyup="keyup"
+	 phx-target="<%= @myself %>">
+	<div class="grid grid-cols-2 board-width-container">
+		<div class="justify-self-start">
+			<%= live_component(UserIcon, name: "Player 1", rating: 2048, image: nil) %>
+		</div>
+		<div class="justify-self-end">
+			<%= live_component(CapturedPieces, id: "captured-white-pieces", color: :white) %>
+		</div>
+	</div>
 	<div class="flex flex-row">
-		<div class="row-label grid grid-rows-8 place-items-center bg-black border-black border-t-5 rounded-l-md">
+		<div class="no-select row-label grid grid-rows-8 place-items-center bg-black border-black border-t-5 rounded-l-md">
 			<%= for i <- 8..1 do %>
-				<p class="text-2xl font-medium text-gray-400"><%= i %></p>
+				<p class="text-xl font-medium text-gray-400"><%= i %></p>
 			<% end %>
 		</div>
 
-		<div class="flex flex-col">
+		<div class="no-select flex flex-col">
 			<div class="relative grid grid-cols-8 gap-0 border-black border-t-5 border-r-5 rounded-tr-md bg-gray-600" id="chess-board">
 				<%= for r <- 8..1 do %>
 					<%= for c <- 1..8 do %>
@@ -41,20 +49,31 @@
 				<% end %>
 
 				<%= if @queening do %>
-						<%= live_component(QueeningModal,
-															id: "queening-modal",
-															target: @myself,
-															color: (if @next_to_move == :white, do: :black, else: :white)) %>
+					<%= live_component(QueeningModal,
+									   id: "queening-modal",
+									   target: @myself,
+									   color: (if @next_to_move == :white, do: :black, else: :white)) %>
+				<% end %>
+
+				<%= if @game_over do %>
+					<%= live_component(GameOverModal, id: "game-over-modal", show: true) %>
 				<% end %>
 			</div>
 
-			<div class="column-label grid grid-cols-8 place-items-center bg-black border-black border-r-5 rounded-br-md">
+			<div class="no-select column-label grid grid-cols-8 place-items-center bg-black border-black border-r-5 rounded-br-md">
 				<%= for i <- String.graphemes("ABCDEFGH") do %>
-					<p class="text-2xl font-medium text-gray-400"><%= i %></p>
+					<p class="text-xl font-medium text-gray-400"><%= i %></p>
 				<% end %>
 			</div>
 		</div>
 	</div>
 
-	<%= live_component(CapturedPieces, id: "captured-black-pieces", color: :black) %>
+	<div class="grid grid-cols-2 board-width-container">
+		<div class="justify-self-start">
+			<%= live_component(UserIcon, name: "Player 2", rating: nil, image: nil) %>
+		</div>
+		<div class="justify-self-end">
+			<%= live_component(CapturedPieces, id: "captured-black-pieces", color: :black) %>
+		</div>
+	</div>
 </div>

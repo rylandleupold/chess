@@ -1,6 +1,5 @@
 <div>
 	<%= if !(is_nil(@type) or is_nil(@color) or is_nil(@img)) do %>
-		<img class="<%= if @type == :pawn, do: 'largepiece', else: 'piece' %>"
-				 src="<%= @img %>">
+		<img class="<%= if @type == :pawn, do: 'largepiece', else: 'piece' %>" src="<%= @img %>">
 	<% end %>
 </div>
