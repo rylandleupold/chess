@@ -557,15 +557,33 @@ defmodule Chess.BoardService do
     {cur_pieces, _, _} = extract_board_from_bitstring(cur_board_bitstring)
     {next_pieces, _, _} = extract_board_from_bitstring(next_board_bitstring)
 
-    {start_square, _} =
-      Enum.find(cur_pieces, fn {square, piece} ->
+    cur_changes =
+      Enum.filter(cur_pieces, fn {square, piece} ->
         piece.color == next_to_move and piece(next_pieces, square) != piece
       end)
 
-    {dest_square, _} =
-      Enum.find(next_pieces, fn {square, piece} ->
+    next_changes =
+      Enum.filter(next_pieces, fn {square, piece} ->
         piece.color == next_to_move and piece(cur_pieces, square) != piece
       end)
+
+    {start_square, _start_info} =
+      if Enum.count(cur_changes) > 1 do
+        Enum.find(cur_changes, fn {_square, %{color: _color, type: type}} ->
+          type == :king
+        end)
+      else
+        Enum.at(cur_changes, 0)
+      end
+
+    {dest_square, _dest_info} =
+      if Enum.count(next_changes) > 1 do
+        Enum.find(next_changes, fn {_square, %{color: _color, type: type}} ->
+          type == :king
+        end)
+      else
+        Enum.at(next_changes, 0)
+      end
 
     {start_square, dest_square}
   end
