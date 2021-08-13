@@ -96,7 +96,22 @@ defmodule ChessWeb.Component.Board do
             socket.assigns.next_to_move
           )
 
-        handle_valid_move(dest_square, assign(socket, selected: start_square), true)
+        {:noreply, socket} =
+          handle_valid_move(dest_square, assign(socket, selected: start_square), true)
+
+        if socket.assigns.queening do
+          {next_pieces, _, _} = BoardService.extract_board_from_bitstring(next_board_bitstring)
+
+          socket =
+            socket
+            |> assign(pieces: next_pieces)
+            |> assign(queening: false)
+            |> assign(queening_square: nil)
+
+          {:noreply, socket}
+        else
+          {:noreply, socket}
+        end
     end
   end
 
@@ -106,38 +121,118 @@ defmodule ChessWeb.Component.Board do
   end
 
   @impl Phoenix.LiveComponent
-  def handle_event("square-clicked", %{"row" => row, "col" => col}, socket) do
-    row = String.to_integer(row)
+  def handle_event(
+        "mousedown",
+        %{"col" => col, "row" => row},
+        socket
+      ) do
     col = String.to_integer(col)
+    row = String.to_integer(row)
 
     cond do
-      socket.assigns.queening ->
-        {:noreply, socket}
-
-      socket.assigns.game_over ->
-        {:noreply, socket}
-
-      !is_nil(socket.assigns.selected) and {row, col} in socket.assigns.valid_moves ->
-        handle_valid_move({row, col}, socket)
-
-      true ->
-        handle_select_piece({row, col}, socket)
+      socket.assigns.game_over -> {:noreply, socket}
+      socket.assigns.queening -> {:noreply, socket}
+      {row, col} in socket.assigns.valid_moves -> handle_valid_move({row, col}, socket)
+      Map.has_key?(socket.assigns.pieces, {row, col}) -> select_piece({row, col}, socket)
+      true -> clear_selection(socket)
     end
+  end
 
-    # if !socket.assigns.queening and !socket.assigns.game_over do
-    #   if !is_nil(socket.assigns.selected) and {row, col} in socket.assigns.valid_moves do
-    #     handle_valid_move({row, col}, socket)
-    #   else
-    #     handle_select_piece({row, col}, socket)
-    #   end
-    # else
-    #   {:noreply, socket}
-    # end
+  @impl Phoenix.LiveComponent
+  def handle_event(
+        "mouseup",
+        %{"col" => col, "row" => row},
+        socket
+      ) do
+    col = String.to_integer(col)
+    row = String.to_integer(row)
+
+    if is_nil(socket.assigns.selected) do
+      {:noreply, socket}
+    else
+      cond do
+        socket.assigns.queening ->
+          {:noreply, socket}
+
+        socket.assigns.game_over ->
+          {:noreply, socket}
+
+        {row, col} in socket.assigns.valid_moves ->
+          handle_valid_move({row, col}, socket)
+
+        {row, col} == socket.assigns.selected ->
+          if socket.assigns.selected == socket.assigns.already_selected do
+            clear_selection(socket)
+          else
+            {:noreply, assign(socket, already_selected: socket.assigns.selected)}
+          end
+
+        true ->
+          {:noreply, assign(socket, already_selected: socket.assigns.selected)}
+      end
+    end
+  end
+
+  defp select_piece({row, col}, socket) do
+    piece = Map.get(socket.assigns.pieces, {row, col})
+
+    if piece.color == socket.assigns.next_to_move do
+      valid_moves =
+        BoardService.valid_moves(
+          socket.assigns.pieces,
+          {row, col},
+          socket.assigns.en_passant_vulnerable,
+          socket.assigns.has_moved
+        )
+
+      valid_moves =
+        if socket.assigns.in_check do
+          filter_valid_moves_for_check(
+            valid_moves,
+            {row, col},
+            socket.assigns.valid_moves_for_check
+          )
+        else
+          BoardService.reject_self_checking_moves(
+            socket.assigns.pieces,
+            valid_moves,
+            {row, col},
+            socket.assigns.kings[socket.assigns.next_to_move],
+            socket.assigns.en_passant_vulnerable
+          )
+        end
+
+      socket =
+        socket
+        |> assign(selected: {row, col})
+        |> assign(valid_moves: valid_moves)
+
+      {:noreply, socket}
+    else
+      socket =
+        socket
+        |> assign(selected: {row, col})
+        |> assign(valid_moves: [])
+
+      {:noreply, socket}
+    end
+  end
+
+  defp clear_selection(socket) do
+    socket =
+      socket
+      |> assign(selected: nil)
+      |> assign(already_selected: nil)
+      |> assign(valid_moves: [])
+
+    {:noreply, socket}
   end
 
   defp handle_valid_move({row, col}, socket, keep_history \\ false) do
     # A valid move was chosen for the selected piece
     next_to_move = toggle_next_to_move(socket.assigns.next_to_move)
+
+    last_move_squares = [socket.assigns.selected, {row, col}]
 
     # Update the board
     {pieces, captured_piece} =
@@ -230,6 +325,7 @@ defmodule ChessWeb.Component.Board do
       socket
       |> assign(pieces: pieces)
       |> assign(selected: nil)
+      |> assign(last_move_squares: last_move_squares)
       |> assign(valid_moves: [])
       |> assign(en_passant_vulnerable: en_passant_vulnerable)
       |> assign(has_moved: has_moved)
@@ -245,53 +341,6 @@ defmodule ChessWeb.Component.Board do
       |> assign(current_board: current_board)
 
     {:noreply, socket}
-  end
-
-  defp handle_select_piece({row, col}, socket) do
-    if Map.has_key?(socket.assigns.pieces, {row, col}) and
-         socket.assigns.selected != {row, col} and
-         socket.assigns.next_to_move == socket.assigns.pieces[{row, col}].color do
-      # A piece was selected
-      valid_moves =
-        BoardService.valid_moves(
-          socket.assigns.pieces,
-          {row, col},
-          socket.assigns.en_passant_vulnerable,
-          socket.assigns.has_moved
-        )
-
-      valid_moves =
-        if socket.assigns.in_check do
-          filter_valid_moves_for_check(
-            valid_moves,
-            {row, col},
-            socket.assigns.valid_moves_for_check
-          )
-        else
-          BoardService.reject_self_checking_moves(
-            socket.assigns.pieces,
-            valid_moves,
-            {row, col},
-            socket.assigns.kings[socket.assigns.next_to_move],
-            socket.assigns.en_passant_vulnerable
-          )
-        end
-
-      socket =
-        socket
-        |> assign(selected: {row, col})
-        |> assign(valid_moves: valid_moves)
-
-      {:noreply, socket}
-    else
-      # An empty square was clicked, or an already selected piece was clicked again
-      socket =
-        socket
-        |> assign(selected: nil)
-        |> assign(valid_moves: [])
-
-      {:noreply, socket}
-    end
   end
 
   defp toggle_next_to_move(color) do
@@ -334,6 +383,39 @@ defmodule ChessWeb.Component.Board do
     end)
   end
 
+  def get_square_background({row, col}, assigns) do
+    case {rem(row, 2) == rem(col, 2), {row, col} in assigns.last_move_squares} do
+      {true, true} -> "last-move-light"
+      {false, true} -> "last-move-dark"
+      {true, false} -> "bg-brown-300"
+      {false, false} -> "bg-brown-600"
+    end
+  end
+
+  def get_square_overlay({row, col}, assigns) do
+    cond do
+      assigns.selected == {row, col} ->
+        "square selected border-4 rounded-sm w-full h-full"
+
+      true ->
+        "bg-transparent border-0 w-full h-full"
+    end
+  end
+
+  def get_circle_overlay({row, col}, assigns) do
+    cond do
+      {row, col} in assigns.valid_moves ->
+        if is_nil(assigns.pieces[{row, col}]) do
+          "select-circle rounded-full bg-brown-800 opacity-60"
+        else
+          "select-circle-piece rounded-full border-6 border-brown-800 opacity-60"
+        end
+
+      true ->
+        ""
+    end
+  end
+
   defp get_default_socket() do
     {pieces, has_moved} = BoardService.get_initial_board_state()
 
@@ -341,6 +423,8 @@ defmodule ChessWeb.Component.Board do
       pieces: pieces,
       has_moved: has_moved,
       selected: nil,
+      already_selected: nil,
+      last_move_squares: [],
       valid_moves: [],
       en_passant_vulnerable: nil,
       next_to_move: :white,
@@ -386,6 +470,8 @@ defmodule ChessWeb.Component.Board do
       pieces: pieces,
       has_moved: has_moved,
       selected: nil,
+      already_selected: nil,
+      last_move_squares: [],
       valid_moves: [],
       en_passant_vulnerable: en_passant_vulnerable,
       next_to_move: next_to_move,

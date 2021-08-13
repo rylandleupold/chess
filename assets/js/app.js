@@ -17,14 +17,18 @@ import {Socket} from "phoenix"
 import topbar from "topbar"
 import {LiveSocket} from "phoenix_live_view"
 import Alpine from 'alpinejs'
+import Drag from './dragHook';
 
 window.Alpine = Alpine
 
 Alpine.start()
 
+const Hooks = { Drag: Drag };
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
     params: {_csrf_token: csrfToken},
+    hooks: Hooks,
     dom: {
       onBeforeElUpdated(from, to) {
         if (from._x_dataStack) { window.Alpine.clone(from, to) }

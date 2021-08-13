@@ -91,6 +91,7 @@
   display: block;
   margin: -1rem 0 2rem;
 }
+
 div .square {
   height: 10vh;
   width: 10vh;
@@ -100,12 +101,25 @@ div .square {
 }
 
 div .small-square {
-  height: 6vh;
+  height: 5vh;
   width: 5vh;
-  min-height: 6vh;
+  min-height: 5vh;
   min-width: 5vh;
   position: relative;
   z-index: -1;
+}
+
+div .last-move-dark {
+  background-color: #766238;
+}
+
+div .last-move-light {
+  background-color: #b79d63;
+}
+
+div .selected {
+  background-color: #7e9e70;
+  border-color: #729065;
 }
 
 div .row-label {
@@ -122,15 +136,17 @@ div .captured-pieces-row {
 }
 
 div .select-circle {
-  margin: 30%;
-  width: 40%;
-  height: 40%;
+  margin: 3vh;
+  width: 4vh;
+  height: 4vh;
+  position: absolute;
 }
 
 div .select-circle-piece {
-  margin: 10%;
-  width: 80%;
-  height: 80%;
+  margin: 1vh;
+  width: 8vh;
+  height: 8vh;
+  position: absolute;
 }
 
 div .queening-modal {
@@ -158,23 +174,17 @@ div .captured-number-circle {
 }
 
 .piece {
-  height: 80%;
+  height: 100%;
+  width: 100%;
+  min-width: 100%;
+  min-height: 100%;
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
   margin: auto;
-}
-
-.largepiece {
-  height: 65%;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
+  cursor: grab;
 }
 
 .board-container {

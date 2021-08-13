@@ -6,7 +6,7 @@
 			phx-target="<%= @target %>"
 			phx-value-type="<%= piece %>"
 			phx-value-color="<%= @color %>">
-			<%= live_component(Piece, id: "queening-#{piece}", type: String.to_atom(piece), color: @color) %>
+            <img src="<%= '/images/#{piece}_#{@color}.png' %>" class="w-full, h-full">
 		</div>
 	<% end %>
 </div>

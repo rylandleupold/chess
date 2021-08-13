@@ -1,15 +1,15 @@
-<div class="captured-pieces-row flex flex-row py-4 px-6">
+<div class="captured-pieces-row flex flex-row py-4 px-6 no-select">
     <%= for {type, n} <- get_pieces(@captured_pieces) do %>
         <%= if n <= 1 do %>
             <div class="small-square self-center">
-                <%= live_component(Piece, type: type, color: @color) %>
+                <img src="<%= '/images/#{type}_#{@color}.png' %>" class="w-full, h-full">
             </div>
         <% else %>
             <div class="small-square self-center">
                 <div class="flex justify-center captured-number-circle rounded-full bg-black text-gray-400 text-base font-medium">
                     <%= n %>
                 </div>
-                <%= live_component(Piece, type: type, color: @color) %>
+                <img src="<%= '/images/#{type}_#{@color}.png' %>" class="w-full, h-full">
             </div>
         <% end %>
     <% end %>

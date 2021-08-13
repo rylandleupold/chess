@@ -1,8 +1,6 @@
 defmodule ChessWeb.Component.CapturedPieces do
   use ChessWeb, :live_component
 
-  alias ChessWeb.Component.Piece
-
   @defaults %{
     color: :white,
     captured_pieces: %{
